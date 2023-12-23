@@ -9,7 +9,7 @@ const MATH_MASK: u16 = !(MATH_MOD as u16);
 #[derive(Debug)]
 pub enum ValueState {
     Number(u16),
-    Register(u16),
+    Register(usize),
     Invalid,
 }
 
@@ -21,11 +21,28 @@ impl Value {
         Self(value)
     }
 
-    pub fn get_value(self) -> ValueState {
+    pub fn get_value_state(self) -> ValueState {
         match self.0 {
             value if value <= 32767 => ValueState::Number(value),
-            value if value <= 32775 => ValueState::Register(value - 32768),
+            value if value <= 32775 => ValueState::Register((value - 32768) as usize),
             _ => ValueState::Invalid,
+        }
+    }
+
+    pub fn to_register(self) -> usize {
+        match self.get_value_state() {
+            ValueState::Number(num) if num < 8 => panic!("TODO: Reckon this shouldn't be valid"),
+            ValueState::Number(_) => panic!("Attempted to use a number as a register"),
+            ValueState::Register(i) => i,
+            ValueState::Invalid => panic!("Attempted to use invalid number {}", self.0),
+        }
+    }
+
+    pub fn to_number(self) -> u16 {
+        match self.get_value_state() {
+            ValueState::Number(num) => num,
+            ValueState::Register(i) => panic!("Attempted to use register {i} as a number!"),
+            ValueState::Invalid => panic!("Attempted to use invalid number {}", self.0),
         }
     }
 
@@ -33,7 +50,7 @@ impl Value {
         char::from_u32(self.0.into()).expect("Value must be a valid ascii character")
     }
 
-    fn new_from_math(value: u32) -> Self {
+    fn mew_from_math(value: u32) -> Self {
         Self((value % MATH_MOD) as u16)
     }
 
@@ -46,14 +63,21 @@ impl ops::Add for Value {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self::new_from_math(self.math_value() + rhs.math_value())
+        Self::mew_from_math(self.math_value() + rhs.math_value())
     }
 }
 
 impl ops::Mul for Value {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
-        Self::new_from_math(self.math_value() * rhs.math_value())
+        Self::mew_from_math(self.math_value() * rhs.math_value())
+    }
+}
+
+impl ops::Rem for Value {
+    type Output = Self;
+    fn rem(self, rhs: Self) -> Self::Output {
+        Self::mew(self.0 % rhs.0)
     }
 }
 

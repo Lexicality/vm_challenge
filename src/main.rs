@@ -6,8 +6,10 @@ use vm_challenge::machine::VM;
 fn main() {
     let data = read_program();
     let mut machine = VM::new(data);
+    println!("=== Starting VM ===");
     machine.run();
-    println!("\nComplete!");
+    println!();
+    println!("=== Execution Complete ===");
 }
 
 fn read_program() -> Vec<u16> {
