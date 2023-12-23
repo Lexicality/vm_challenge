@@ -1,28 +1,13 @@
 use std::fs::File;
 use std::io::Read;
 
-use vm_challenge::value::Value;
-
-#[derive(Debug)]
-enum Opcode {
-    Halt,
-    Out(Value),
-    Noop,
-}
-
-impl Opcode {
-    fn num_args(&self) -> u32 {
-        match self {
-            Self::Halt | Self::Noop => 0,
-            Self::Out(_) => 1,
-        }
-    }
-}
+use vm_challenge::machine::VM;
 
 fn main() {
     let data = read_program();
-    println!("data: {}", data.len());
-    println!("{:?}", &data[..30]);
+    let mut machine = VM::new(data);
+    machine.run();
+    println!("\nComplete!");
 }
 
 fn read_program() -> Vec<u16> {
