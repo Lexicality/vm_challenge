@@ -17,7 +17,7 @@ pub enum ValueState {
 pub struct Value(u16);
 
 impl Value {
-    pub fn mew(value: u16) -> Self {
+    pub const fn mew(value: u16) -> Self {
         Self(value)
     }
 

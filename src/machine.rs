@@ -1,3 +1,7 @@
+use std::collections::VecDeque;
+
+use text_io::read;
+
 use crate::value::{Value, ValueState};
 
 #[derive(Debug)]
@@ -17,7 +21,12 @@ pub enum Opcode {
     And,
     Or,
     Not,
+    Rmem,
+    Wmem,
+    Call,
+    Ret,
     Out,
+    In,
     Noop,
 }
 
@@ -25,8 +34,8 @@ impl Opcode {
     fn num_args(&self) -> usize {
         match self {
             Self::Halt | Self::Noop => 0,
-            Self::Push | Self::Pop | Self::Jmp | Self::Out => 1,
-            Self::Set | Self::Jt | Self::Jf | Self::Not => 2,
+            Self::Push | Self::Pop | Self::Jmp | Self::Call | Self::Ret | Self::Out | Self::In => 1,
+            Self::Set | Self::Jt | Self::Jf | Self::Not | Self::Rmem | Self::Wmem => 2,
             Self::Eq | Self::Gt | Self::Add | Self::Mult | Self::Mod | Self::And | Self::Or => 3,
         }
     }
@@ -54,7 +63,12 @@ impl TryFrom<Value> for Opcode {
                 12 => Ok(Self::And),
                 13 => Ok(Self::Or),
                 14 => Ok(Self::Not),
+                15 => Ok(Self::Rmem),
+                16 => Ok(Self::Wmem),
+                17 => Ok(Self::Call),
+                18 => Ok(Self::Ret),
                 19 => Ok(Self::Out),
+                20 => Ok(Self::In),
                 21 => Ok(Self::Noop),
                 _ => Err(format!("Unknown opcode {n}")),
             }
@@ -74,7 +88,7 @@ pub struct VM {
     stack: Vec<Value>,
     registers: [Value; 8],
     pc: usize,
-    input: Vec<Value>,
+    input: VecDeque<Value>,
 }
 
 impl VM {
@@ -84,7 +98,7 @@ impl VM {
             stack: Vec::new(),
             registers: [Value::mew(0); 8],
             pc: 0,
-            input: Vec::new(),
+            input: VecDeque::new(),
         }
     }
 
@@ -154,7 +168,7 @@ impl VM {
                     }
                     Opcode::Jt => {
                         let value = self.get_value(1).to_number();
-                        if value > 0 {
+                        if value != 0 {
                             self.pc = self.get_value(2).to_number() as usize;
                             return ExecutionState::Running;
                         }
@@ -201,8 +215,46 @@ impl VM {
                         let a = self.get_value(2);
                         self.set_memory(target, !a);
                     }
+                    Opcode::Rmem => {
+                        let target = self.get_memory(1);
+                        let location = self.get_value(2).to_number() as usize;
+                        let value = self.memory[location];
+                        self.set_memory(target, value);
+                    }
+                    Opcode::Wmem => {
+                        let location = self.get_value(1).to_number() as usize;
+                        let value = self.get_value(2);
+                        self.memory[location] = value;
+                    }
+                    Opcode::Call => {
+                        let a = self.get_value(1);
+                        self.stack.push(Value::mew((self.pc + 2) as u16));
+                        self.pc = a.to_number() as usize;
+                        return ExecutionState::Running;
+                    }
+                    Opcode::Ret => {
+                        if let Some(value) = self.stack.pop() {
+                            self.pc = value.to_number() as usize;
+                            return ExecutionState::Running;
+                        } else {
+                            return ExecutionState::Complete;
+                        }
+                    }
                     Opcode::Out => {
                         print!("{}", self.get_value(1).to_ascii());
+                    }
+                    Opcode::In => {
+                        if self.input.is_empty() {
+                            print!("> ");
+                            let line: String = read!("{}\n");
+                            self.input
+                                .extend(line.bytes().map(|b| Value::mew(b as u16)));
+                            const MEWLINE: Value = Value::mew(('\n' as u32) as u16);
+                            self.input.push_back(MEWLINE);
+                        }
+                        let value = self.input.pop_front().unwrap();
+                        let target = self.get_memory(1);
+                        self.set_memory(target, value);
                     }
                     Opcode::Noop => (),
                 }
