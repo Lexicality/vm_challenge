@@ -277,6 +277,9 @@ impl VM {
                                     println!("=== State Loaded ===");
                                     line = "look".to_owned();
                                 }
+                                "exit" => {
+                                    return ExecutionState::Complete;
+                                }
                                 line if !line.is_ascii() => {
                                     println!("Cannot use non-ascii input!");
                                     return ExecutionState::Running;
