@@ -1,8 +1,5 @@
-use std::{
-    collections::VecDeque,
-    fs::File,
-    io::{Read, Write},
-};
+use std::collections::VecDeque;
+use std::fs::File;
 
 use serde::{Deserialize, Serialize};
 use text_io::read;
@@ -255,25 +252,21 @@ impl VM {
                             let mut line: String = read!("{}\n");
                             match line.as_str() {
                                 "save" => {
-                                    let vm = ron::to_string(self).unwrap();
-                                    File::options()
+                                    let file = File::options()
                                         .create(true)
                                         .truncate(true)
                                         .write(true)
                                         .open("vm.ron")
-                                        .unwrap()
-                                        .write_all(&vm.into_bytes())
+                                        .unwrap();
+                                    ron::ser::to_writer_pretty(file, &self, Default::default())
                                         .unwrap();
                                     println!("=== State Saved ===");
                                     return ExecutionState::Running;
                                 }
                                 "load" => {
-                                    let mut raw_data = String::new();
-                                    File::open("vm.ron")
-                                        .expect("Save file doesn't exist!")
-                                        .read_to_string(&mut raw_data)
-                                        .unwrap();
-                                    *self = ron::from_str(&raw_data).unwrap();
+                                    let file =
+                                        File::open("vm.ron").expect("Save file doesn't exist!");
+                                    *self = ron::de::from_reader(&file).unwrap();
                                     println!("=== State Loaded ===");
                                     line = "look".to_owned();
                                 }
