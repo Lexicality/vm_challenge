@@ -1,5 +1,10 @@
-use std::collections::VecDeque;
+use std::{
+    collections::VecDeque,
+    fs::File,
+    io::{Read, Write},
+};
 
+use serde::{Deserialize, Serialize};
 use text_io::read;
 
 use crate::value::{Value, ValueState};
@@ -83,6 +88,7 @@ pub enum ExecutionState {
     Complete,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct VM {
     memory: Vec<Value>,
     stack: Vec<Value>,
@@ -246,7 +252,37 @@ impl VM {
                     Opcode::In => {
                         if self.input.is_empty() {
                             print!("> ");
-                            let line: String = read!("{}\n");
+                            let mut line: String = read!("{}\n");
+                            match line.as_str() {
+                                "save" => {
+                                    let vm = ron::to_string(self).unwrap();
+                                    File::options()
+                                        .create(true)
+                                        .truncate(true)
+                                        .write(true)
+                                        .open("vm.ron")
+                                        .unwrap()
+                                        .write_all(&vm.into_bytes())
+                                        .unwrap();
+                                    println!("=== State Saved ===");
+                                    return ExecutionState::Running;
+                                }
+                                "load" => {
+                                    let mut raw_data = String::new();
+                                    File::open("vm.ron")
+                                        .expect("Save file doesn't exist!")
+                                        .read_to_string(&mut raw_data)
+                                        .unwrap();
+                                    *self = ron::from_str(&raw_data).unwrap();
+                                    println!("=== State Loaded ===");
+                                    line = "look".to_owned();
+                                }
+                                line if !line.is_ascii() => {
+                                    println!("Cannot use non-ascii input!");
+                                    return ExecutionState::Running;
+                                }
+                                _ => (),
+                            }
                             self.input
                                 .extend(line.bytes().map(|b| Value::mew(b as u16)));
                             const MEWLINE: Value = Value::mew(('\n' as u32) as u16);

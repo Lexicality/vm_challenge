@@ -1,7 +1,7 @@
-use std::{
-    fmt::Display,
-    ops::{self, BitAnd},
-};
+use std::fmt::Display;
+use std::ops;
+
+use serde::{Deserialize, Serialize};
 
 const MATH_MOD: u32 = 32_768;
 const MATH_MASK: u16 = !(MATH_MOD as u16);
@@ -13,7 +13,7 @@ pub enum ValueState {
     Invalid,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Value(u16);
 
 impl Value {
@@ -100,7 +100,7 @@ impl ops::BitOr for Value {
 impl ops::Not for Value {
     type Output = Self;
     fn not(self) -> Self::Output {
-        Self(self.0.not().bitand(MATH_MASK))
+        Self(self.0.not() & MATH_MASK)
     }
 }
 
